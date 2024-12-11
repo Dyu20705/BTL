@@ -1,12 +1,17 @@
-#include <bits/stdc++.h>
+#include <iostream>
+#include <map>
+#include <string>
+#include <cctype>
+#include <stdexcept>
 using namespace std;
+
 template <typename T>
 class stackHCY {
-    int mS;     
-    int tI;    
-    T* stk;     
+    int mS;     // Maximum size of the stack
+    int tI;     // Index of the top element
+    T* stk;     // Array to store stack elements
 public:
-    stackHCY(int a=0) {
+    stackHCY(int a = 0) {
         mS = a;
         tI = -1;
         stk = new T[mS];
@@ -19,98 +24,102 @@ public:
         return stk[tI];
     }
     void push(const T& e) {
-        if (tI >= mS - 1) {
-            throw runtime_error("Stack overflow"); 
-        }
-        tI++;
-        stk[tI] = e;
+        if (tI >= mS - 1) throw runtime_error("Stack overflow");
+        stk[++tI] = e;
     }
     void pop() {
-        if (empty()) {
-            throw runtime_error("Stack underflow"); 
-        }
+        if (empty()) throw runtime_error("Stack underflow");
         tI--;
     }
-    void chuyenPhanTu(stackHCY<T>& b) {
-        while (!this->empty()) {
-            b.push(this->top());
-            this->pop();
-        }
-    }
 };
+
 template <typename T>
 class calExp {
-    map<char, int> op = {{'+', 1}, {'-', 1}, {'*', 2}, {'/', 2}}; 
+    map<char, int> op = {{'+', 1}, {'-', 1}, {'*', 2}, {'/', 2}};
+    
     float tinhToan(float a, float b, char op) {
         switch (op) {
             case '+': return a + b;
             case '-': return a - b;
             case '*': return a * b;
-            case '/': return a / b;
-            default: throw runtime_error("Invalid operator"); 
+            case '/': 
+                if (b == 0) throw runtime_error("Division by zero");
+                return a / b;
+            default: throw runtime_error("Invalid operator");
         }
     }
+
 public:
-    stackHCY<T> AlgBaLan(string str) {
-        stackHCY<T> a(100), b(100);
-        for (int i = 0; i < str.length(); i++) {
+    string AlgBaLan(const string& str) {
+        stackHCY<char> operators(100);
+        string output;
+
+        for (size_t i = 0; i < str.length(); ++i) {
             if (isdigit(str[i])) {
-                b.push(str[i]);
-            }
-            else if (str[i] == '(') {
-                a.push(str[i]);
-            }
-            else if (str[i] == ')') {
-                while (!a.empty() && a.top() != '(') {
-                    b.push(a.top());
-                    a.pop();
+                // Append digit to the output
+                output += str[i];
+            } else if (str[i] == '(') {
+                operators.push(str[i]);
+            } else if (str[i] == ')') {
+                // Pop operators until '(' is encountered
+                while (!operators.empty() && operators.top() != '(') {
+                    output += operators.top();
+                    operators.pop();
                 }
-                if (!a.empty()) a.pop(); 
-            }
-            else if (op.find(str[i]) != op.end()) { 
-                while (!a.empty() && op[a.top()] >= op[str[i]]) {
-                    b.push(a.top());
-                    a.pop();
+                if (!operators.empty() && operators.top() == '(') {
+                    operators.pop();
                 }
-                a.push(str[i]); 
+            } else if (op.find(str[i]) != op.end()) {
+                // Handle operator precedence
+                while (!operators.empty() && op[operators.top()] >= op[str[i]]) {
+                    output += operators.top();
+                    operators.pop();
+                }
+                operators.push(str[i]);
             }
         }
-        a.chuyenPhanTu(b); 
-        return b;
+
+        // Append remaining operators
+        while (!operators.empty()) {
+            output += operators.top();
+            operators.pop();
+        }
+
+        return output;
     }
-    float calStackBaLan(stackHCY<T>& a) {
-    	stackHCY<float> b(100);
-    	stackHCY<char> c(100);
-    	a.chuyenPhanTu(c);
-    	while (!c.empty()) {
-        	char d = c.top(); 
-        	if (isdigit(d)) {
-            b.push(static_cast<float>(d - '0')); 
-        	} 
-        	else if (op.find(d) != op.end()) {
-            	float y = b.top(); b.pop();
-            	float x = b.top(); b.pop();
-            	b.push(tinhToan(y, x, d)); 
-    		}
-        	c.pop();
-    	}
-    	return b.top();
-	}
+
+    float calStackBaLan(const string& postfix) {
+        stackHCY<float> evalStack(100);
+
+        for (char token : postfix) {
+            if (isdigit(token)) {
+                evalStack.push(static_cast<float>(token - '0'));
+            } else if (op.find(token) != op.end()) {
+                if (evalStack.size() < 2) throw runtime_error("Invalid postfix expression");
+                float b = evalStack.top(); evalStack.pop();
+                float a = evalStack.top(); evalStack.pop();
+                evalStack.push(tinhToan(a, b, token));
+            }
+        }
+
+        if (evalStack.size() != 1) throw runtime_error("Invalid postfix evaluation");
+        return evalStack.top();
+    }
 };
-main() {
-    string a;
-    getline(cin, a); 
-    calExp<char> b;
-    stackHCY<char> c = b.AlgBaLan(a);
-    stackHCY<char>d(100);
-    c.chuyenPhanTu(d); 
-    while (!d.empty()) {
-        cout << d.top() ;
-        d.pop();
-    }
-    cout << endl;
-    float res = b.calStackBaLan(c);
-    cout <<  res << endl;
+
+int main() {
+    string input;
+    getline(cin, input);
+
+    calExp<char> calculator;
+    string postfix = calculator.AlgBaLan(input);
+
+    // Print postfix expression
+    cout << "Postfix Expression: " << postfix << endl;
+
+    // Calculate result of postfix expression
+    float result = calculator.calStackBaLan(postfix);
+    cout << "Result: " << result << endl;
+
     return 0;
 }
-
